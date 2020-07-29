@@ -1,10 +1,17 @@
 # Serve model as a flask application
 from flask import Flask, request, jsonify, render_template
-from flask_sqlalchemy import SQLAlchemy
 import pickle
-import numpy as np
 from flask import Flask, request
 from flask_cors import CORS
+import nltk
+import string
+nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('wordnet')
+from sklearn.feature_extraction import text
+
+
 
 
 
@@ -13,12 +20,12 @@ app = Flask(__name__)
 
 CORS(app)
 
-def load_model():
-    global model
-    # model variable refers to the global variable
-    with open('finalized_model.pkl', 'rb') as f:
-        model = pickle.load(f)
-    global tv
+# def load_model():
+#     global model
+#     # model variable refers to the global variable
+#     with open('finalized_model.pkl', 'rb') as f:
+#         model = pickle.load(f)
+#     global tv
 
 
 @app.route('/', methods=['GET'])
@@ -26,29 +33,66 @@ def classify():
     # if request.method == 'GET':
     return render_template('home_page.html')
 
+def get_wordnet_pos(treebank_tag):
 
+    if treebank_tag.startswith('J'):
+        return nltk.corpus.wordnet.ADJ
+    elif treebank_tag.startswith('V'):
+        return nltk.corpus.wordnet.VERB
+    elif treebank_tag.startswith('N'):
+        return nltk.corpus.wordnet.NOUN
+    elif treebank_tag.startswith('R'):
+        return nltk.corpus.wordnet.ADV
+    else:
+        return nltk.corpus.wordnet.NOUN
+
+lem = nltk.WordNetLemmatizer()
+
+single_letters = set(string.ascii_lowercase)
+nltk_stop_words = set(nltk.corpus.stopwords.words('english')).union(single_letters)
+stopwords = set(text.ENGLISH_STOP_WORDS.union(nltk_stop_words))
+
+error = ['far', 'make', 'need', 'sha', 'wo']
+stopwords = set(stopwords.union(error))
+
+def tokenize_and_lemmatize(para):
+            tokens = [word for word in nltk.word_tokenize(para)]
+            
+            #remove non alphabetical tokens
+            filtered_tokens = []
+            for token in tokens:
+                if token.isalpha():
+                    filtered_tokens.append(token)
+        
+            lemmatized_tokens = []        
+        
+            for (item,pos_tag) in nltk.pos_tag(filtered_tokens):
+                lemmatized_token = lem.lemmatize(item, get_wordnet_pos(pos_tag))
+                lemmatized_tokens.append(lemmatized_token)
+                                    
+            #return filtered_tokens
+            return lemmatized_tokens 
 
 
 @app.route('/predict', methods=['POST'])
 def get_prediction():
     # Works only for a single sample
-    print(request)
     if request.method == 'POST':
         data = request.get_json()  # Get data posted as a json
-        from data_process import process_data
-        from sklearn.ensemble import RandomForestClassifier
 
-
-
+        print(data)
+        
 
 
         # with open('new_finalized_model.pkl', 'rb') as f:
         #     model = pickle.load(f)
         with open('tv.pkl', 'rb') as f:
             tv = pickle.load(f)
+        with open('finalized_model.pkl', 'rb') as f:
+            model = pickle.load(f)
 
 
-        processed_data = tv.transform(str(data['lyrics']))
+        processed_data = tv.transform([data['lyrics']])
         prediction = model.predict(processed_data)  # runs globally loaded model on the data
     
         
