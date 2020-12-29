@@ -1,2 +1,3 @@
 # Algorhythm_web_app
-Code to deploy on heroku
+Simple Flask Application to classify gender based on Lyrics
+The model was trained and saved into pickle file which is loaded into this app.
